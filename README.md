@@ -2,7 +2,13 @@
 
 Translations:
 
+[한국어](https://github.com/xotrs/laravel-best-practices) (by [cherrypick](https://github.com/xotrs))
+
 [Русский](russian.md)
+
+[Português](https://github.com/jonaselan/laravel-best-practices) (by [jonaselan](https://github.com/jonaselan))
+
+[Tiếng Việt](https://chungnguyen.xyz/posts/code-laravel-lam-sao-cho-chuan) (by [Chung Nguyễn](https://github.com/nguyentranchung))
 
 
 
@@ -24,7 +30,7 @@ It's not a Laravel adaptation of SOLID principles, patterns etc. Here you'll fin
 
 [Mass assignment](#mass-assignment)
 
-[Do not execute queries in Blade templates and use eager loading (N + 1 problem)](#do-not-execute-queries-in-blade-templates-and-use-eager-loading-n--1-problem))
+[Do not execute queries in Blade templates and use eager loading (N + 1 problem)](#do-not-execute-queries-in-blade-templates-and-use-eager-loading-n--1-problem)
 
 [Comment your code, but prefer descriptive method and variable names over comments](#comment-your-code-but-prefer-descriptive-method-and-variable-names-over-comments)
 
@@ -40,6 +46,10 @@ It's not a Laravel adaptation of SOLID principles, patterns etc. Here you'll fin
 
 [Use IoC container or facades instead of new Class](#use-ioc-container-or-facades-instead-of-new-class)
 
+[Do not get data from the `.env` file directly](#do-not-get-data-from-the-env-file-directly)
+
+[Store dates in the standard format. Use accessors and mutators to modify date format](#store-dates-in-the-standard-format-use-accessors-and-mutators-to-modify-date-format)
+
 [Other good practices](#other-good-practices)
 
 ### **Single responsibility principle**
@@ -48,11 +58,11 @@ A class and a method should have only one responsibility.
 
 Bad:
 
-```
+```php
 public function getFullNameAttribute()
 {
     if (auth()->user() && auth()->user()->hasRole('client') && auth()->user()->isVerified()) {
-        return 'Mr. ' . $this->first_name . ' ' . $this->middle_name . ' ' $this->last_name;
+        return 'Mr. ' . $this->first_name . ' ' . $this->middle_name . ' ' . $this->last_name;
     } else {
         return $this->first_name[0] . '. ' . $this->last_name;
     }
@@ -61,13 +71,13 @@ public function getFullNameAttribute()
 
 Good:
 
-```
+```php
 public function getFullNameAttribute()
 {
     return $this->isVerifiedClient() ? $this->getFullNameLong() : $this->getFullNameShort();
 }
 
-public function isVerfiedClient()
+public function isVerifiedClient()
 {
     return auth()->user() && auth()->user()->hasRole('client') && auth()->user()->isVerified();
 }
@@ -91,7 +101,7 @@ Put all DB related logic into Eloquent models or into Repository classes if you'
 
 Bad:
 
-```
+```php
 public function index()
 {
     $clients = Client::verified()
@@ -106,13 +116,13 @@ public function index()
 
 Good:
 
-```
+```php
 public function index()
 {
     return view('index', ['clients' => $this->client->getWithNewOrders()]);
 }
 
-Class Client extends Model
+class Client extends Model
 {
     public function getWithNewOrders()
     {
@@ -133,7 +143,7 @@ Move validation from controllers to Request classes.
 
 Bad:
 
-```
+```php
 public function store(Request $request)
 {
     $request->validate([
@@ -148,7 +158,7 @@ public function store(Request $request)
 
 Good:
 
-```
+```php
 public function store(PostRequest $request)
 {    
     ....
@@ -175,7 +185,7 @@ A controller must have only one responsibility, so move business logic from cont
 
 Bad:
 
-```
+```php
 public function store(Request $request)
 {
     if ($request->hasFile('image')) {
@@ -188,7 +198,7 @@ public function store(Request $request)
 
 Good:
 
-```
+```php
 public function store(Request $request)
 {
     $this->articleService->handleUploadedImage($request->file('image'));
@@ -215,7 +225,7 @@ Reuse code when you can. SRP is helping you to avoid duplication. Also, reuse Bl
 
 Bad:
 
-```
+```php
 public function getActive()
 {
     return $this->where('verified', 1)->whereNotNull('deleted_at')->get();
@@ -231,7 +241,7 @@ public function getArticles()
 
 Good:
 
-```
+```php
 public function scopeActive($q)
 {
     return $q->where('verified', 1)->whereNotNull('deleted_at');
@@ -258,7 +268,7 @@ Eloquent allows you to write readable and maintainable code. Also, Eloquent has 
 
 Bad:
 
-```
+```sql
 SELECT *
 FROM `articles`
 WHERE EXISTS (SELECT *
@@ -275,7 +285,7 @@ ORDER BY `created_at` DESC
 
 Good:
 
-```
+```php
 Article::has('user.profile')->verified()->latest()->get();
 ```
 
@@ -285,19 +295,19 @@ Article::has('user.profile')->verified()->latest()->get();
 
 Bad:
 
-```
+```php
 $article = new Article;
 $article->title = $request->title;
 $article->content = $request->content;
 $article->verified = $request->verified;
-// Привязать статью к категории.
+// Add category to article
 $article->category_id = $category->id;
 $article->save();
 ```
 
 Good:
 
-```
+```php
 $category->article()->create($request->all());
 ```
 
@@ -307,7 +317,7 @@ $category->article()->create($request->all());
 
 Bad (for 100 users, 101 DB queries will be executed):
 
-```
+```php
 @foreach (User::all() as $user)
     {{ $user->profile->name }}
 @endforeach
@@ -315,7 +325,7 @@ Bad (for 100 users, 101 DB queries will be executed):
 
 Good (for 100 users, 2 DB queries will be executed):
 
-```
+```php
 $users = User::with('profile')->get();
 
 ...
@@ -331,20 +341,20 @@ $users = User::with('profile')->get();
 
 Bad:
 
-```
+```php
 if (count((array) $builder->getQuery()->joins) > 0)
 ```
 
 Better:
 
-```
+```php
 // Determine if there are any joins.
 if (count((array) $builder->getQuery()->joins) > 0)
 ```
 
 Good:
 
-```
+```php
 if ($this->hasJoins())
 ```
 
@@ -354,23 +364,23 @@ if ($this->hasJoins())
 
 Bad:
 
-```
+```php
 let article = `{{ json_encode($article) }}`;
 ```
 
 Better:
 
-```
-<input id="article" type="hidden" value="{{ json_encode($article) }}">
+```php
+<input id="article" type="hidden" value="@json($article)">
 
 Or
 
-<button class="js-fav-article" data-article="{{ json_encode($article) }}">{{ $article->name }}<button>
+<button class="js-fav-article" data-article="@json($article)">{{ $article->name }}<button>
 ```
 
-В Javascript файле:
+In a Javascript file:
 
-```
+```javascript
 let article = $('#article').val();
 ```
 
@@ -382,7 +392,7 @@ The best way is to use specialized PHP to JS package to transfer the data.
 
 Bad:
 
-```
+```php
 public function isNormal()
 {
     return $article->type === 'normal';
@@ -393,7 +403,7 @@ return back()->with('message', 'Your article has been added!');
 
 Good:
 
-```
+```php
 public function isNormal()
 {
     return $article->type === Article::TYPE_NORMAL;
@@ -447,8 +457,9 @@ Model | singular | User | ~~Users~~
 hasOne or belongsTo relationship | singular | articleComment | ~~articleComments, article_comment~~
 All other relationships | plural | articleComments | ~~articleComment, article_comments~~
 Table | plural | article_comments | ~~article_comment, articleComments~~
-Pivot table | singular model names in alphabet order | article_user | ~~user_article, articles_users~~
+Pivot table | singular model names in alphabetical order | article_user | ~~user_article, articles_users~~
 Table column | snake_case without model name | meta_title | ~~MetaTitle; article_meta_title~~
+Model property | snake_case | $model->created_at | ~~$model->createdAt~~
 Foreign key | singular model name with _id suffix | article_id | ~~ArticleId, id_article, articles_id~~
 Primary key | - | id | ~~custom_id~~
 Migration | - | 2017_01_01_000000_create_articles_table | ~~2017_01_01_000000_articles~~
@@ -470,14 +481,14 @@ Trait | adjective | Notifiable | ~~NotificationTrait~~
 
 Bad:
 
-```
+```php
 $request->session()->get('cart');
 $request->input('name');
 ```
 
 Good:
 
-```
+```php
 session('cart');
 $request->name;
 ```
@@ -489,10 +500,19 @@ Common syntax | Shorter and more readable syntax
 `Session::get('cart')` | `session('cart')`
 `$request->session()->get('cart')` | `session('cart')`
 `Session::put('cart', $data)` | `session(['cart' => $data])`
-`$request->input('name')` | `$request->name`
-`Request::get('name')` | `request('name')`
+`$request->input('name'), Request::get('name')` | `$request->name, request('name')`
 `return Redirect::back()` | `return back()`
+`is_null($object->relation) ? null : $object->relation->id` | `optional($object->relation)->id`
 `return view('index')->with('title', $title)->with('client', $client)` | `return view('index', compact('title', 'client'))`
+`$request->has('value') ? $request->value : 'default';` | `$request->get('value', 'default')`
+`Carbon::now(), Carbon::today()` | `now(), today()`
+`App::make('Class')` | `app('Class')`
+`->where('column', '=', 1)` | `->where('column', 1)`
+`->orderBy('created_at', 'desc')` | `->latest()`
+`->orderBy('age', 'desc')` | `->latest('age')`
+`->orderBy('created_at', 'asc')` | `->oldest()`
+`->select('id', 'name')->get()` | `->get(['id', 'name'])`
+`->first()->name` | `->value('name')`
 
 [🔝 Back to contents](#contents)
 
@@ -502,14 +522,14 @@ new Class syntax creates tight coupling between classes and complicates testing.
 
 Bad:
 
-```
+```php
 $user = new User;
 $user->create($request->all());
 ```
 
 Good:
 
-```
+```php
 public function __construct(User $user)
 {
     $this->user = $user;
@@ -522,10 +542,58 @@ $this->user->create($request->all());
 
 [🔝 Back to contents](#contents)
 
+### **Do not get data from the `.env` file directly**
+
+Pass the data to config files instead and then use the `config()` helper function to use the data in an application.
+
+Bad:
+
+```php
+$apiKey = env('API_KEY');
+```
+
+Good:
+
+```php
+// config/api.php
+'key' => env('API_KEY'),
+
+// Use the data
+$apiKey = config('api.key');
+```
+
+[🔝 Back to contents](#contents)
+
+### **Store dates in the standard format. Use accessors and mutators to modify date format**
+
+Bad:
+
+```php
+{{ Carbon::createFromFormat('Y-d-m H-i', $object->ordered_at)->toDateString() }}
+{{ Carbon::createFromFormat('Y-d-m H-i', $object->ordered_at)->format('m-d') }}
+```
+
+Good:
+
+```php
+// Model
+protected $dates = ['ordered_at', 'created_at', 'updated_at']
+public function getSomeDateAttribute($date)
+{
+    return $date->format('m-d');
+}
+
+// View
+{{ $object->ordered_at->toDateString() }}
+{{ $object->ordered_at->some_date }}
+```
+
+[🔝 Back to contents](#contents)
+
 ### **Other good practices**
 
 Never put any logic in routes files.
 
-Try not to use vanilla PHP in Blade templates.
+Minimize usage of vanilla PHP in Blade templates.
 
 [🔝 Back to contents](#contents)

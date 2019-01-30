@@ -34,6 +34,10 @@
 
 [Используйте IoC или фасады вместо new Class](#Используйте-ioc-или-фасады-вместо-new-class)
 
+[Не работайте с данными из файла `.env` напрямую](#Не-работайте-с-данными-из-файла-env-напрямую)
+
+[Храните даты в стандартном формате. Используйте читатели и преобразователи для преобразования формата](#Храните-даты-в-стандартном-формате-Используйте-читатели-и-преобразователи-для-преобразования-формата)
+
 [Другие советы и практики](#Другие-советы-и-практики)
 
 ### **Принцип единственной ответственности (Single responsibility principle)**
@@ -46,7 +50,7 @@
 public function getFullNameAttribute()
 {
     if (auth()->user() && auth()->user()->hasRole('client') && auth()->user()->isVerified()) {
-        return 'Mr. ' . $this->first_name . ' ' . $this->middle_name . ' ' $this->last_name;
+        return 'Mr. ' . $this->first_name . ' ' . $this->middle_name . ' ' . $this->last_name;
     } else {
         return $this->first_name[0] . '. ' . $this->last_name;
     }
@@ -61,7 +65,7 @@ public function getFullNameAttribute()
     return $this->isVerifiedClient() ? $this->getFullNameLong() : $this->getFullNameShort();
 }
 
-public function isVerfiedClient()
+public function isVerifiedClient()
 {
     return auth()->user() && auth()->user()->hasRole('client') && auth()->user()->isVerified();
 }
@@ -106,7 +110,7 @@ public function index()
     return view('index', ['clients' => $this->client->getWithNewOrders()]);
 }
 
-Class Client extends Model
+class Client extends Model
 {
     public function getWithNewOrders()
     {
@@ -445,6 +449,7 @@ e2e тестирование | Laravel Dusk | Codeception
 Таблица | мн. ч. | article_comments | ~~article_comment, articleComments~~
 Pivot таблица | имена моделей в алфавитном порядке в ед. ч. | article_user | ~~user_article, articles_users~~
 Столбец в таблице | snake_case без имени модели | meta_title | ~~MetaTitle; article_meta_title~~
+Свойство модели | snake_case | $model->created_at | ~~$model->createdAt~~
 Внешний ключ | имя модели ед. ч. и _id | article_id | ~~ArticleId, id_article, articles_id~~
 Первичный ключ | - | id | ~~custom_id~~
 Миграция | - | 2017_01_01_000000_create_articles_table | ~~2017_01_01_000000_articles~~
@@ -485,10 +490,19 @@ $request->name;
 `Session::get('cart')` | `session('cart')`
 `$request->session()->get('cart')` | `session('cart')`
 `Session::put('cart', $data)` | `session(['cart' => $data])`
-`$request->input('name')` | `$request->name`
-`Request::get('name')` | `request('name')`
+`$request->input('name'), Request::get('name')` | `$request->name, request('name')`
 `return Redirect::back()` | `return back()`
+`is_null($object->relation) ? null : $object->relation->id` | `optional($object->relation)->id`
 `return view('index')->with('title', $title)->with('client', $client)` | `return view('index', compact('title', 'client'))`
+`$request->has('value') ? $request->value : 'default';` | `$request->get('value', 'default')`
+`Carbon::now(), Carbon::today()` | `now(), today()`
+`App::make('Class')` | `app('Class')`
+`->where('column', '=', 1)` | `->where('column', 1)`
+`->orderBy('created_at', 'desc')` | `->latest()`
+`->orderBy('age', 'desc')` | `->latest('age')`
+`->orderBy('created_at', 'asc')` | `->oldest()`
+`->select('id', 'name')->get()` | `->get(['id', 'name'])`
+`->first()->name` | `->value('name')`
 
 [🔝 Наверх](#Содержание)
 
@@ -518,10 +532,59 @@ $this->user->create($request->all());
 
 [🔝 Наверх](#Содержание)
 
+### **Не работайте с данными из файла `.env` напрямую**
+
+Передайте данные из `.env` файла в кофигурационный файл и используйте `config()` в приложении, чтобы использовать эти данными.
+
+Плохо:
+
+```
+$apiKey = env('API_KEY');
+```
+
+Хорошо:
+
+```
+// config/api.php
+'key' => env('API_KEY'),
+
+// Используйте данные в приложении
+$apiKey = config('api.key');
+```
+
+[🔝 Наверх](#Содержание)
+
+### **Храните даты в стандартном формате. Используйте читатели и преобразователи для преобразования формата**
+
+Плохо:
+
+```
+{{ Carbon::createFromFormat('Y-d-m H-i', $object->ordered_at)->toDateString() }}
+{{ Carbon::createFromFormat('Y-d-m H-i', $object->ordered_at)->format('m-d') }}
+```
+
+Хорошо:
+
+```
+// Модель
+protected $dates = ['ordered_at', 'created_at', 'updated_at']
+// Читатель (accessor)
+public function getSomeDateAttribute($date)
+{
+    return $date->format('m-d');
+}
+
+// Шаблон
+{{ $object->ordered_at->toDateString() }}
+{{ $object->ordered_at->some_date }}
+```
+
+[🔝 Наверх](#Содержание)
+
 ### **Другие советы и практики**
 
 Не размещайте логику в маршрутах.
 
-Старайтесь не использовать сырой PHP в шаблонах Blade.
+Старайтесь не использовать "сырой" PHP в шаблонах Blade.
 
 [🔝 Наверх](#Содержание)
